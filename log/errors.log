@@ -1,0 +1,3 @@
+Apr 24 21:04:20: main: Fatal - Error in configuration file: Findlib error: Findlib package wysiwiki_eliom.src not found: maybe you forgot <findlib path="..."/>?
+Apr 24 21:04:56: main: Fatal - Error in configuration file: Findlib error: Findlib package wysiwiki_eliom.src not found: maybe you forgot <findlib path="..."/>?
+Apr 24 21:32:39: main: Fatal - Error in configuration file: Error while parsing configuration file: Eliom: while loading ./src/miniwiki.cma: Ocsigen_extensions.Error_in_config_file("Unexpected content inside Miniwiki config")
