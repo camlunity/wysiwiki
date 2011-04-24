@@ -1,4 +1,3 @@
-include ../../eliom.dev/Makefile.config
 
 ## Use local files
 ## (tests do not require global installation of Eliom)
@@ -10,11 +9,7 @@ ELIOMOPT := eliomopt ${OPTDBG}
 ELIOMDEP := eliomdep
 JS_OF_ELIOM := js_of_eliom
 
-ifeq "${NATDYNLINK}" "YES"
 all: byte opt
-else
-all: byte
-endif
 
 #### Main site : eliom_testsuite ####
 
@@ -24,7 +19,7 @@ CLIENT_PACKAGE :=
 SERVER_FILES := miniwiki.eliom
 CLIENT_FILES := miniwiki.eliom \
 
-STATICDIR := ../../local/var/www/miniwiki
+STATICDIR := ../../eliom.dev/local/var/www/miniwiki
 
 byte:: miniwiki.cma ${STATICDIR}/miniwiki.js
 opt:: miniwiki.cmxs ${STATICDIR}/miniwiki.js

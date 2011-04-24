@@ -1,4 +1,6 @@
 _server/miniwiki.cmo:
 _server/miniwiki.cmx:
+_client/miniwiki.cmo:
+_client/miniwiki.cmx:
 _client/miniwiki.cmo: _server/miniwiki.type_mli
 _client/miniwiki.cmx: _server/miniwiki.type_mli
