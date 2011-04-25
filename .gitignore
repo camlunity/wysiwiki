@@ -1,3 +1,4 @@
+./log
 ./log/access.log
 ./log/errors.log
 ./log/warnings.log
