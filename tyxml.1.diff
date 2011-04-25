@@ -1,0 +1,11 @@
+diff -rN -u old-tyxml/lib/XHTML_types.mli new-tyxml/lib/XHTML_types.mli
+--- old-tyxml/lib/XHTML_types.mli	2011-04-25 21:53:58.000000000 +0400
++++ new-tyxml/lib/XHTML_types.mli	2011-04-25 21:53:58.000000000 +0400
+@@ -1282,6 +1282,7 @@
+     | `Name_01_00
+     | `Width
+     | `Height
++    | `OnLoad
+   ]
+ 
+ type iframe_content = [ | `PCDATA | flow ]
