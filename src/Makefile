@@ -20,6 +20,7 @@ SERVER_FILES := miniwiki.eliom
 CLIENT_FILES := miniwiki.eliom \
 
 STATICDIR := ../../eliom.dev/local/var/www/miniwiki
+#STATICDIR := ../static
 
 byte:: miniwiki.cma ${STATICDIR}/miniwiki.js
 opt:: miniwiki.cmxs ${STATICDIR}/miniwiki.js
