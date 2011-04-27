@@ -34,19 +34,15 @@ module My_appl =
 
 let wiki_view_page = 
   let open Eliom_parameters in
-  Eliom_services.service [""] (suffix (string "p")) ()
-(*
-let wiki_start = Eliom_output.Redirection.register_service [] Eliom_parameters.unit
-    (fun _ _ ->
-       Lwt.return (Eliom_services.preapply wiki_view_page "WikiStart"))
-*)
-(*
+  print_endline "register Wiki_view_page";
+  Eliom_services.service [] (suffix (string "p")) ()
+
 let wiki_start = 
   let open Eliom_output in
+  print_endline "register Wiki_start";
   Redirection.register_service [] Eliom_parameters.unit
   (fun _ _ ->        
-    Lwt.return (Eliom_services.preapply wiki_view_page "WikiStart"))
-*)
+    Lwt.return (Eliom_services.preapply wiki_view_page "WikiStart"))    
 
 let wiki_edit_page = Eliom_services.service ["edit"] (Eliom_parameters.string "p") ()
 
@@ -54,10 +50,6 @@ let menu_html content =
   [div ~a:[a_id "navbar"] [
     div ~a:[a_id "akmenu"] [p [
       span ~a:[a_class ["nwikilogo"]] [pcdata "MiniWiki"];	    
-(*            a ~service:wiki_view_page
-              ~a:[a_accesskey 'h'; a_class ["ak"]]
-              [pcdata "Home"] "WikiStart";
-	    a   [pcdata "Edit page"]; *)
       Eliom_output.Html5.a ~a:[a_accesskey 'h'; a_class ["ak"]] 
 	[pcdata "Home"]  ~service:wiki_view_page "WikiStart"; 
       Eliom_output.Html5.a ~a:[a_accesskey 'e'; a_class ["ak"]] 
