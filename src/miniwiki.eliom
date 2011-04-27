@@ -6,7 +6,7 @@
 }}
 
 {client{
-(*  Dom_html.window##alert (Js.string "asdf") *)
+(*  Dom_html.window##alert (Js.string "asdf")  *)
 }}
 (*
 {server{ 
@@ -32,51 +32,63 @@ module My_appl =
 	}
     end)
 
-{client{
-  let draw ctx (color, size, (x1, y1), (x2, y2)) =
-    ctx##strokeStyle <- (Js.string color);
-    ctx##lineWidth <- float size;
-    ctx##beginPath();
-    ctx##moveTo(float x1, float y1);
-    ctx##lineTo(float x2, float y2);
-    ctx##stroke()
-}}
+let wiki_view_page = 
+  let open Eliom_parameters in
+  Eliom_services.service [""] (suffix (string "p")) ()
+(*
+let wiki_start = Eliom_output.Redirection.register_service [] Eliom_parameters.unit
+    (fun _ _ ->
+       Lwt.return (Eliom_services.preapply wiki_view_page "WikiStart"))
+*)
+(*
+let wiki_start = 
+  let open Eliom_output in
+  Redirection.register_service [] Eliom_parameters.unit
+  (fun _ _ ->        
+    Lwt.return (Eliom_services.preapply wiki_view_page "WikiStart"))
+*)
 
+let wiki_edit_page = Eliom_services.service ["edit"] (Eliom_parameters.string "p") ()
+
+let menu_html content = 
+  [div ~a:[a_id "navbar"] [
+    div ~a:[a_id "akmenu"] [p [
+      span ~a:[a_class ["nwikilogo"]] [pcdata "MiniWiki"];	    
+(*            a ~service:wiki_view_page
+              ~a:[a_accesskey 'h'; a_class ["ak"]]
+              [pcdata "Home"] "WikiStart";
+	    a   [pcdata "Edit page"]; *)
+      Eliom_output.Html5.a ~a:[a_accesskey 'h'; a_class ["ak"]] 
+	[pcdata "Home"]  ~service:wiki_view_page "WikiStart"; 
+      Eliom_output.Html5.a ~a:[a_accesskey 'e'; a_class ["ak"]] 
+	[pcdata "Edit page"]  ~service:wiki_edit_page "edit"; 
+      br ()]]];
+  div ~a:[a_id "content"] content]
+
+let () = My_appl.register wiki_edit_page 
+  (fun s () -> Lwt.return 
+      (menu_html [h1 [pcdata "edit_page"]])
+  )
+
+let () = My_appl.register wiki_view_page 
+  (fun s () -> Lwt.return 
+      (menu_html [h1 [pcdata "view_page"]])
+  )
+
+(*
 let wiki_edit_page =
   let open Eliom_parameters in
   (* TODO: understand how to create service with 2 parameters *)
   My_appl.register_service ~path:["edit"] ~get_params:(string "p")
-    (fun s () -> Lwt.return [])
+    (fun s () -> Lwt.return [
+      menu_html [h1 [pcdata "edit_page"]]
+    ])
+*)
 
 let main_service =
   My_appl.register_service ~path:[""] ~get_params:Eliom_parameters.unit
     (fun () () ->
-(*       Eliom_services.onload
-         {{
-           let canvas = Dom_html.createCanvas Dom_html.document in
-           let ctx = canvas##getContext (Dom_html._2d_) in
-           canvas##width <- width; canvas##height <- height;
-           ctx##lineCap <- Js.string "round";
-
-           Dom.appendChild Dom_html.document##body canvas;
-
-           draw ctx ("#ffaa33", 12, (10, 10), (200, 100))
-         }}; 
-*)
-      Lwt.return [
-	div ~a:[a_id "navbar"] [
-	  div ~a:[a_id "akmenu"] [p [
-	    span ~a:[a_class ["nwikilogo"]] [pcdata "MiniWiki"];	    
-(*            a ~service:wiki_view_page
-              ~a:[a_accesskey 'h'; a_class ["ak"]]
-              [pcdata "Home"] "WikiStart"; *)
-	    a   [pcdata "Edit page"];
-(*            a ~service:(wiki_edit_page)
-	      ~a:[(*a_accesskey 'e'; a_class ["ak"]*)]
-              [pcdata "Edit page"] ; *)
-	    br ()]]];
-	div ~a:[a_id "content"] [];
-	
-	h1 [pcdata "Graffiti"]])
+      let a  = Eliom_output.Html5.a in
+      Lwt.return (menu_html [h1 [pcdata "main_service"]]))
 
 
