@@ -1,5 +1,9 @@
 _server/miniwiki.cmo:
 _server/miniwiki.cmx:
+_client/wiki2html.cmo:
+_client/wiki2html.cmx:
+_client/wiki2html.cmo: _server/wiki2html.type_mli
+_client/wiki2html.cmx: _server/wiki2html.type_mli
 _client/miniwiki.cmo:
 _client/miniwiki.cmx:
 _client/miniwiki.cmo: _server/miniwiki.type_mli

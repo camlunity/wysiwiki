@@ -17,7 +17,7 @@ SERVER_PACKAGE :=
 CLIENT_PACKAGE :=
 
 SERVER_FILES := miniwiki.eliom
-CLIENT_FILES := miniwiki.eliom \
+CLIENT_FILES := wiki2html.eliom miniwiki.eliom 
 
 STATICDIR := ../../eliom.dev/local/var/www/miniwiki
 #STATICDIR := ../static
