@@ -1,4 +1,7 @@
+{shared{
 open Lwt
+let ( >> ) x f = f x
+}}
 open Lwt_chan
 open Eliom_parameters
 
@@ -8,10 +11,6 @@ open Eliom_output
 open Eliom_services
 open Eliom_parameters
 open Eliom_state
-
-{client{
-(*  Dom_html.window##alert (Js.string "asdf")  *)
-}}
 
 module My_appl =
   Eliom_output.Eliom_appl (
@@ -51,7 +50,6 @@ let menu_html content =
 
 let wiki_page_menu_html page  = menu_html
   
-
 let finally_ handler f x =
   catch
     (fun () -> f x)
@@ -273,7 +271,7 @@ let parse_lines lines =
   (* Line-by-line wiki parser *)
   let rec loop acc = function
       (x::xs) as lst ->
-        let parse_list r =
+        let _ r =
           (* Grab all lines starting with '*': *)
           let (after_bullets,bullets) =
             take_while (fun e -> is_list e <> None) lst in
@@ -287,13 +285,13 @@ let parse_lines lines =
                  | None -> assert false) bullets in
           loop ((translate_list list_items)::acc) after_bullets in
 
-        let parse_verbatim r =
+        let _ r =
           (* Handle <pre>..</pre>, {{{..}}} *)
           let (after_pre,contents) =
             take_while
               (fun x -> match_pcre_option close_pre_re x = None)
               lst in
-          let p  =
+          let _  =
             (pre [pcdata (String.concat "\n" (List.tl contents))]) in
           loop (acc) (List.tl after_pre) in
 
@@ -338,7 +336,6 @@ let service_save_page_post =
     )
 
 let wiki_page_contents_html page ?(content=[]) () =
-  print_endline " wiki_page_contents_html call";
   print_endline ("page = " ^ page);
   wikiml_to_html page >>= fun p ->
   return (wiki_page_menu_html page ([div ~a:[] (content)]))
@@ -348,7 +345,16 @@ let wiki_page_contents_html page ?(content=[]) () =
     let e1 = Dom_html.document##getElementById (Js.string name) in
     let e2 = Js.Opt.get e1 (fun () -> assert false) in
     (Js.Unsafe.coerce e2)
+
+  let replace_child p n =
+    Js.Opt.iter (p##firstChild) (fun c -> 
+      Firebug.console##log (c);
+      Dom.removeChild p c
+    );
+    Dom.appendChild p n
 }}
+
+open Eliom_services
 
 let () = My_appl.register wiki_edit_page 
   (fun page () -> 
@@ -358,34 +364,42 @@ let () = My_appl.register wiki_edit_page
      else 
 	return "")
     >>= fun wikitext ->
+    Eliom_services.onload 
+      {{
+      ignore ((Lwt_js.sleep 1.) >>= (fun _ -> 
+	let fr = find_iframe "main_iframe" in
+	fr##src <- Js.string "#";
+	let doc = Js.Opt.get (fr##contentDocument) (fun _ -> assert false) in
+	doc##open_ ();
+	doc##write (Js.string "<html><body><div id=\"qqq\"/></body></html>");
+	doc##close ();
+	let rendered = Wiki_syntax.xml_of_wiki %wikitext doc in
+	let qqq = doc##getElementById (Js.string "qqq") in
+	Js.Opt.case qqq (fun () ->  () )
+	  (fun x -> replace_child x rendered);
+	return ()		   
+      ) )  
+    }};
+
     let f =
-      print_endline "f";
       Eliom_output.Html5.post_form service_save_page_post
         (fun chain ->
 	  print_endline "post_form";
-	  let x = "asdfasdf" in
           [(p ~a:[
 	      ] [string_input ~input_type:`Submit ~value:"Save" (); br ();
-		 textarea ~name:chain ~rows:30 ~cols:80
-                   ~value:wikitext ()]);
-	   div ~a:[
-	   ] [
+		 textarea ~name:chain ~rows:10 ~cols:80  ~value:"" ()]);
+	   div ~a:[] [
 	     iframe ~a:[
-	       a_id "main_iframe";
-(*	       a_src "#"; *)
-	       a_onload {{
-		 
-		 Dom_html.window##alert (Js.string %x)
-	       }}
-	     ] []]
+	       a_id "main_iframe"
+	     ] []
+	   ]
 	  ]
 	)
         page
     in    
     (wiki_page_contents_html page ~content:[f] () >>= fun c ->
      (return [div c] )
-    ) 
-	
+    ) 	
   )
 
 let () = My_appl.register wiki_view_page 
@@ -404,4 +418,3 @@ let () = My_appl.register wiki_view_page
 	   ))
     )
   )
-
