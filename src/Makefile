@@ -17,13 +17,14 @@ SERVER_PACKAGE :=
 CLIENT_PACKAGE :=
 
 SERVER_FILES := miniwiki.eliom
-CLIENT_FILES := wiki2html.eliom miniwiki.eliom 
+CLIENT_FILES := wiki_syntax.eliom wiki2html.eliom miniwiki.eliom 
 
 STATICDIR := ../../eliom.dev/local/var/www/miniwiki
+TARGET   =  ${STATICDIR}/miniwiki.js
 #STATICDIR := ../static
 
-byte:: miniwiki.cma ${STATICDIR}/miniwiki.js
-opt:: miniwiki.cmxs ${STATICDIR}/miniwiki.js
+byte:: miniwiki.cma $(TARGET)
+opt:: miniwiki.cmxs $(TARGET)
 
 #### Server side #######
 
@@ -64,8 +65,12 @@ CLIENT_INC  := ${addprefix -package ,${CLIENT_PACKAGE}}
 CLIENT_OBJS := $(patsubst %.eliom,_client/%.cmo, \
 	          $(patsubst %.ml,_client/%.cmo,${CLIENT_FILES}))
 
-${STATICDIR}/miniwiki.js:  ${CLIENT_OBJS}
-	${JS_OF_ELIOM} -o $@ -jsopt -pretty -jsopt -noinline ${CLIENT_LIBS} $^
+LIBS = wikicreole.cmo
+
+${STATICDIR}/miniwiki.js: lexer javascripts
+
+javascripts:  ${CLIENT_OBJS}
+	${JS_OF_ELIOM} -o $(TARGET) -jsopt -pretty -jsopt -noinline $(LIBS) ${CLIENT_LIBS} $^
 
 _client/%.cmi: %.mli
 	${JS_OF_ELIOM} -c ${CLIENT_INC} $<
@@ -75,13 +80,17 @@ _client/%.cmo: %.eliom
 _client/%.cmo: %.ml
 	${JS_OF_ELIOM} -c ${CLIENT_INC} $<
 
+lexer:
+	ocamllex wikicreole.mll
+	ocamlc -c wikicreole.ml -o _client/wikicreole.cmo
+
 ## Clean up
 
 clean: clean.local
 clean.local:
 	-rm -f *.cm[ioax] *.cmxa *.cmxs *.o *.a *.annot
 	-rm -f *.type_mli
-	-rm -f ${STATICDIR}/miniwiki.js
+	-rm -f $(TARGET) wikicreole.ml
 	-rm -rf _client/* _server/*
 
 distclean: clean.local

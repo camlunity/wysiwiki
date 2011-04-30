@@ -341,7 +341,14 @@ let wiki_page_contents_html page ?(content=[]) () =
   print_endline " wiki_page_contents_html call";
   print_endline ("page = " ^ page);
   wikiml_to_html page >>= fun p ->
-  return (wiki_page_menu_html page ([div ~a:[] []]))
+  return (wiki_page_menu_html page ([div ~a:[] (content)]))
+
+{client{
+  let find_iframe name : Dom_html.iFrameElement Js.t = 
+    let e1 = Dom_html.document##getElementById (Js.string name) in
+    let e2 = Js.Opt.get e1 (fun () -> assert false) in
+    (Js.Unsafe.coerce e2)
+}}
 
 let () = My_appl.register wiki_edit_page 
   (fun page () -> 
@@ -356,15 +363,29 @@ let () = My_appl.register wiki_edit_page
       Eliom_output.Html5.post_form service_save_page_post
         (fun chain ->
 	  print_endline "post_form";
-          [(p [string_input ~input_type:`Submit ~value:"Save" (); br ();
-               textarea ~name:chain ~rows:30 ~cols:80
-                 ~value:wikitext ()])
-	  ])
+	  let x = "asdfasdf" in
+          [(p ~a:[
+	      ] [string_input ~input_type:`Submit ~value:"Save" (); br ();
+		 textarea ~name:chain ~rows:30 ~cols:80
+                   ~value:wikitext ()]);
+	   div ~a:[
+	   ] [
+	     iframe ~a:[
+	       a_id "main_iframe";
+(*	       a_src "#"; *)
+	       a_onload {{
+		 
+		 Dom_html.window##alert (Js.string %x)
+	       }}
+	     ] []]
+	  ]
+	)
         page
     in    
     (wiki_page_contents_html page ~content:[f] () >>= fun c ->
      (return [div c] )
-    )
+    ) 
+	
   )
 
 let () = My_appl.register wiki_view_page 
