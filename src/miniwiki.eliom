@@ -129,194 +129,6 @@ let take_while pred lines =
   loop [] lines
 
 
-let comp_re = Pcre.regexp ~flags:[`ANCHORED]
-
-let accepted_chars_ = "a-zA-Z\128-\2550-9_!\"§°#%&/\\(\\)=\\?\\+\\.,;:{}'@\\$\\^\\*`´<>"
-let accepted_chars_sans_ws = "["^accepted_chars_^"-]+"
-let accepted_chars = "["^accepted_chars_^" -]+"
-
-let text_re = comp_re ("("^accepted_chars_sans_ws^")")
-let wikilink_re = comp_re "([A-Z][a-z]+([A-Z][a-z]+)+)"
-
-let wikilinkanum_re =
-  comp_re
-    ("(\\[(wiki|file|http):("^accepted_chars_sans_ws^")[ ]+("^accepted_chars^")\\])")
-
-let wikilinkanum_no_text_re =
-  comp_re ("(\\[(wiki|file|http):("^accepted_chars_sans_ws^")\\])")
-
-
-let h1_re = Pcre.regexp "^=(.*)=([ \n\r]*)?$"
-let h2_re = Pcre.regexp "^==(.*)==([ \n\r]*)?$"
-let h3_re = Pcre.regexp "^===(.*)===([ \n\r]*)?$"
-let list_re = Pcre.regexp "^[ ]?([*]+) (.*)([ \n\r]*)?$"
-
-let match_pcre_option rex s =
-  try Some (Pcre.extract ~rex s) with Not_found -> None
-
-let is_list s =
-  match_pcre_option list_re s
-
-let open_pre_re = Pcre.regexp "^(<pre>|{{{)[ \n\r]+$"
-let close_pre_re = Pcre.regexp "^(</pre>|}}})[ \n\r]+$"
-
-
-let translate_list items  =
-  [ul ~a:[] [] ]
-(*  let add_ul t lst = 
-    lst in
-(*  t @ [ul (List.hd lst) (List.tl lst)] in *)
-
-  let rec loop = function
-      ((nesting1,text1)::(nesting2,text2)::xs) as lst ->
-        if nesting1 = nesting2 then
-          (li text1)::loop (List.tl lst)
-        else if nesting1 < nesting2 then (* enter *)
-          let (next_same_level,same_or_higher) =
-            take_while (fun (n,_) -> n >= nesting2) (List.tl lst) in
-          (li (add_ul text1 (loop same_or_higher)))::loop next_same_level
-        else (* leave *)
-          loop (List.tl lst)
-    | (nesting,text)::[] ->
-        [(li text)]
-    | [] -> [] in
-  let list_items = loop items in
-  ul (List.hd list_items) (List.tl list_items)
-*)
-let parse_lines lines = 
-
-  let wikilink scheme page text  =
-    if scheme = "wiki" || scheme = "" then
-      let t = if text = "" then page else text in
-      if wiki_page_exists page then
-        a  ~service:wiki_view_page [pcdata t] page
-      else
-        a ~a:[a_class ["missing_page"]] ~service:wiki_view_page [pcdata t]
-          page
-    else (* External link *)
-      let url = scheme^":"^page in
-      let t = if text = "" then url else text in
-      HTML5.M.a ~a:[a_href (Uri.uri_of_string url)] [pcdata t]
-  in
-
-  let rec pcre_first_match str pos =
-    let rec loop = function
-        (rex,f)::xs ->
-          (try Some (Pcre.extract ~rex ~pos str, f) with Not_found -> loop xs)
-      | [] -> None in
-    loop in
-
-  (* Parse a line of text *)
-  let rec parse_text acc s =
-
-    let len = String.length s in
-    let add_html html_acc html =
-      html::html_acc in
-
-    let parse_wikilink acc r charpos =
-      (add_html acc (wikilink "" r.(1) r.(1)), charpos+(String.length r.(0))) in
-
-    let parse_wikilinkanum acc r charpos =
-      let scheme = r.(2) in
-      let page = r.(3) in
-      let text = r.(4) in
-      let fm_len = String.length r.(0) in
-      (add_html acc (wikilink scheme page text), charpos+fm_len) in
-
-    let parse_wikilinkanum_no_text acc r charpos =
-      let scheme = r.(2) in
-      let page = r.(3) in
-      let text = "" in
-      let fm_len = String.length r.(0) in
-      (add_html acc (wikilink scheme page text), charpos+fm_len) in
-
-    let parse_text acc r charpos =
-      (add_html acc (pcdata r.(1)), charpos+(String.length r.(0))) in
-
-    let text_patterns =
-      [(wikilink_re, parse_wikilink);
-       (wikilinkanum_re, parse_wikilinkanum);
-       (wikilinkanum_no_text_re, parse_wikilinkanum_no_text);
-       (text_re, parse_text)] in
-
-    let rec loop acc charpos =
-      if charpos >= len then
-        acc
-      else
-        if s.[charpos] = '\t' then
-          let m = "\t" in
-          loop (add_html acc (pcdata m)) (charpos+1)
-        else if s.[charpos] = ' ' then
-          let m = " " in
-          loop (add_html acc (pcdata m)) (charpos+1)
-        else if s.[charpos] = '\r' || s.[charpos] = '\n' then
-          acc
-        else
-          begin
-            match pcre_first_match s charpos text_patterns with
-              Some (r,f) ->
-                let (acc',charpos') = f acc r charpos in
-                loop acc' charpos'
-            | None ->
-                let s = (String.sub s charpos ((String.length s)-charpos)) in
-                add_html acc
-                  (span
-                     [span ~a:[a_class ["error"]]
-                        [pcdata "WIKI SYNTAX ERROR IN INPUT: "];
-                      pcdata s])
-          end
-    in
-    List.rev (loop acc 0) in
-
-  (* Line-by-line wiki parser *)
-  let rec loop acc = function
-      (x::xs) as lst ->
-        let _ r =
-          (* Grab all lines starting with '*': *)
-          let (after_bullets,bullets) =
-            take_while (fun e -> is_list e <> None) lst in
-          let list_items =
-            List.map
-              (fun e ->
-                 match is_list e with
-                   Some r ->
-                     let n_stars = String.length r.(1) in
-                     (n_stars, parse_text [] r.(2))
-                 | None -> assert false) bullets in
-          loop ((translate_list list_items)::acc) after_bullets in
-
-        let _ r =
-          (* Handle <pre>..</pre>, {{{..}}} *)
-          let (after_pre,contents) =
-            take_while
-              (fun x -> match_pcre_option close_pre_re x = None)
-              lst in
-          let _  =
-            (pre [pcdata (String.concat "\n" (List.tl contents))]) in
-          loop (acc) (List.tl after_pre) in
-
-(*        let wiki_pats =
-          [(h3_re, (fun r -> loop ((ul ~a:[] [])::acc) xs));
-           (h2_re, (fun r -> loop ((ul ~a:[] [pcdata r.(1)])::acc) xs));
-           (h1_re, (fun r -> loop ((ul ~a:[] [pcdata r.(1)])::acc) xs));
-           (list_re, parse_list);
-           (open_pre_re, parse_verbatim)] in
-        begin
-          match pcre_first_match x 0 wiki_pats with
-            Some (res, action) -> action res
-            | None -> *)
-              loop (acc) xs
-  (*      end *)
-    | [] -> List.rev acc in
-
-  return (loop [] lines) 
-
-let wikiml_to_html page =
-  if wiki_page_exists page then
-    load_wiki_page page >>= parse_lines
-  else
-    return []
-
 let html_stub body_html = 
   return     
     (html
@@ -332,19 +144,16 @@ let service_save_page_post =
     ~post_params:(string "value")
     (fun (page:string) (value:string) ->
       print_endline ("save value: "^value); 
-      html_stub []
+      html_stub [h1 ~a:[] [pcdata "here"]]
     )
 
-let wiki_page_contents_html page ?(content=[]) () =
-  print_endline ("page = " ^ page);
-  wikiml_to_html page >>= fun p ->
-  return (wiki_page_menu_html page ([div ~a:[] (content)]))
-
 {client{
-  let find_iframe name : Dom_html.iFrameElement Js.t = 
+  let find_element name = 
     let e1 = Dom_html.document##getElementById (Js.string name) in
     let e2 = Js.Opt.get e1 (fun () -> assert false) in
     (Js.Unsafe.coerce e2)
+
+  let find_iframe name : Dom_html.iFrameElement Js.t =  find_element name
 
   let replace_child p n =
     Js.Opt.iter (p##firstChild) (fun c -> 
@@ -377,29 +186,29 @@ let () = My_appl.register wiki_edit_page
 	let qqq = doc##getElementById (Js.string "qqq") in
 	Js.Opt.case qqq (fun () ->  () )
 	  (fun x -> replace_child x rendered);
+
+	let but: Dom_html.buttonElement Js.t = find_element "submit_button" in
+	but##onclick <- Dom_html.handler (fun _ ->
+	  let x: int = %service_save_page_post in 
+	  let _ = (Eliom_client.call_service %service_save_page_post %page "asdf" )  >>=
+	  (fun ans -> 
+	    Firebug.console##log (ans);
+	    Dom_html.window##alert (Js.string "=)");
+	    Dom_html.window##alert (Js.string ans);
+	    return ()
+	  ) in
+	  Js._true
+	);
 	return ()		   
       ) )  
     }};
-
-    let f =
-      Eliom_output.Html5.post_form service_save_page_post
-        (fun chain ->
-	  print_endline "post_form";
-          [(p ~a:[
-	      ] [string_input ~input_type:`Submit ~value:"Save" (); br ();
-		 textarea ~name:chain ~rows:10 ~cols:80  ~value:"" ()]);
-	   div ~a:[] [
-	     iframe ~a:[
-	       a_id "main_iframe"
-	     ] []
-	   ]
-	  ]
-	)
-        page
-    in    
-    (wiki_page_contents_html page ~content:[f] () >>= fun c ->
-     (return [div c] )
-    ) 	
+	
+    Lwt.return (menu_html [
+      div ~a:[] [
+	button ~a:[a_id "submit_button"] ~button_type:`Button [i ~a:[] [pcdata "Save"] ];
+	iframe ~a:[a_id "main_iframe"] []
+      ]
+    ])
   )
 
 let () = My_appl.register wiki_view_page 
