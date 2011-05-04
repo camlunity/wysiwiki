@@ -17,7 +17,7 @@ SERVER_PACKAGE :=
 CLIENT_PACKAGE :=
 
 SERVER_FILES := miniwiki.eliom
-CLIENT_FILES := wiki_syntax.eliom wiki2html.eliom miniwiki.eliom 
+CLIENT_FILES := wiki_syntax.eliom html2wiki.eliom miniwiki.eliom 
 
 STATICDIR := ../../eliom.dev/local/var/www/miniwiki
 TARGET   =  ${STATICDIR}/miniwiki.js

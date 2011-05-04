@@ -4,3 +4,7 @@ all:
 run:
 	ocsigenserver -c eliom.conf
 
+clean:
+	$(MAKE) -C src clean
+
+

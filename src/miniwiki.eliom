@@ -16,7 +16,7 @@ module My_appl =
   Eliom_output.Eliom_appl (
     struct
       let application_name = "miniwiki"
-      let params = (*Eliom_output.default_appl_params *)
+      let params = 
 	let open Eliom_output in
 	{ ap_title = "miniwiki";
 	  ap_container = None;
@@ -37,14 +37,14 @@ let wiki_start =
 
 let wiki_edit_page = Eliom_services.service ["edit"] (Eliom_parameters.string "p") ()
 
-let menu_html content = 
+let menu_html ~edit:page content = 
   [div ~a:[a_id "navbar"] [
     div ~a:[a_id "akmenu"] [p [
       span ~a:[a_class ["nwikilogo"]] [pcdata "MiniWiki"];	    
       Eliom_output.Html5.a ~a:[a_accesskey 'h'; a_class ["ak"]] ~absolute:true
 	[pcdata "Home"]  ~service:wiki_view_page "WikiStart"; 
       Eliom_output.Html5.a ~a:[a_accesskey 'e'; a_class ["ak"]] ~absolute:true 
-	[pcdata "Edit page"]  ~service:wiki_edit_page "edit"; 
+	[pcdata "Edit page"]  ~service:wiki_edit_page page; 
       br ()]]];
   div ~a:[a_id "content"] content]
 
@@ -128,7 +128,6 @@ let take_while pred lines =
         ([], List.rev acc) in
   loop [] lines
 
-
 let html_stub body_html = 
   return     
     (html
@@ -137,17 +136,13 @@ let html_stub body_html =
        )
        (body body_html))
 
-(* Save page as a result of /edit?p=Page *)
-let service_save_page_post =
-  Eliom_output.Html5.register_post_service
+let service_save_page_post = Eliom_services.post_service
     ~fallback:wiki_view_page
-    ~post_params:(string "value")
-    (fun (page:string) (value:string) ->
-      print_endline ("save value: "^value); 
-      html_stub [h1 ~a:[] [pcdata "here"]]
-    )
+    ~post_params:(string "value") 
+    ()
 
 {client{
+  (* TODO: understanf Grgoire's letter *)
   let find_element name = 
     let e1 = Dom_html.document##getElementById (Js.string name) in
     let e2 = Js.Opt.get e1 (fun () -> assert false) in
@@ -163,6 +158,31 @@ let service_save_page_post =
     Dom.appendChild p n
 }}
 
+let view_content page () =
+  print_endline "view_content";
+  (if wiki_page_exists page then 
+      (load_wiki_page page) >>= fun s -> return (String.concat "\n" s)
+   else
+      return "") 
+  >>= (fun s ->
+    let d = div ~a:[a_id "qqq"] [] in
+    Eliom_services.onload {{
+      let d = find_element "qqq" in
+      let rendered = Wiki_syntax.xml_of_wiki %s Dom_html.document in
+      replace_child d rendered	
+    }};
+
+    Lwt.return 
+      (menu_html ~edit:page [d])
+  )  
+
+let () = My_appl.register wiki_view_page view_content
+
+let () = My_appl.register service_save_page_post
+    (fun page value ->
+      (save_wiki_page page value) >> view_content page ()
+    )
+
 open Eliom_services
 
 let () = My_appl.register wiki_edit_page 
@@ -173,57 +193,38 @@ let () = My_appl.register wiki_edit_page
      else 
 	return "")
     >>= fun wikitext ->
-    Eliom_services.onload 
-      {{
-      ignore ((Lwt_js.sleep 1.) >>= (fun _ -> 
+    let frame = iframe ~a:[a_id "main_iframe"] [] in
+    Eliom_services.onload {{
+      ignore ((Lwt_js.sleep 0.5) >>= (fun _ -> 
+	
 	let fr = find_iframe "main_iframe" in
 	fr##src <- Js.string "#";
 	let doc = Js.Opt.get (fr##contentDocument) (fun _ -> assert false) in
 	doc##open_ ();
 	doc##write (Js.string "<html><body><div id=\"qqq\"/></body></html>");
 	doc##close ();
+	doc##designMode <- Js.string "On";
 	let rendered = Wiki_syntax.xml_of_wiki %wikitext doc in
 	let qqq = doc##getElementById (Js.string "qqq") in
 	Js.Opt.case qqq (fun () ->  () )
 	  (fun x -> replace_child x rendered);
 
-	let but: Dom_html.buttonElement Js.t = find_element "submit_button" in
-	but##onclick <- Dom_html.handler (fun _ ->
-	  let x: int = %service_save_page_post in 
-	  let _ = (Eliom_client.call_service %service_save_page_post %page "asdf" )  >>=
-	  (fun ans -> 
-	    Firebug.console##log (ans);
-	    Dom_html.window##alert (Js.string "=)");
-	    Dom_html.window##alert (Js.string ans);
-	    return ()
-	  ) in
-	  Js._true
-	);
 	return ()		   
       ) )  
     }};
 	
-    Lwt.return (menu_html [
+    Lwt.return (menu_html ~edit:page [
       div ~a:[] [
-	button ~a:[a_id "submit_button"] ~button_type:`Button [i ~a:[] [pcdata "Save"] ];
-	iframe ~a:[a_id "main_iframe"] []
+	frame; br ();
+	button ~a:[a_id "submit_button";
+		   a_onclick {{
+		     let fr = find_iframe "main_iframe" in
+		     let doc = Js.Opt.get (fr##contentDocument) (fun _ -> assert false) in
+		     let ans = Html2wiki.html2wiki (doc##body :> Dom.node Js.t) in
+		     Eliom_client.change_page %service_save_page_post "value" ans 
+		       (* TODO: carring in line above wil not be reported as warning *)		       
+		   }}
+		  ] ~button_type:`Button [i ~a:[] [pcdata "Save"] ]	
       ]
     ])
-  )
-
-let () = My_appl.register wiki_view_page 
-  (fun page () -> 
-    (if wiki_page_exists page then (
-      let open Lwt_io in
-      Lwt_stream.to_list (lines_of_file (wiki_page_filename page)) 
-     ) else
-      return [""]) >>=
-    (fun (s:string list) ->
-      let inner = List.map (fun s -> h1 [pcdata s]) s in
-      Lwt.return 
-	(menu_html 
-	   ((h1 [pcdata "view_page"]) :: inner
-	    
-	   ))
-    )
   )
