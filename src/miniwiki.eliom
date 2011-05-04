@@ -10,7 +10,6 @@ open Eliom_output.Html5
 open Eliom_output
 open Eliom_services
 open Eliom_parameters
-open Eliom_state
 
 module My_appl =
   Eliom_output.Eliom_appl (
@@ -72,7 +71,6 @@ let fold_read_lines f accum inchnl =
   in
   loop accum
 
-
 let with_open_out fname f =
   Lwt_chan.open_out fname >>= fun oc ->
   finally_
@@ -111,23 +109,6 @@ let load_wiki_page page =
       fold_read_lines (fun acc line -> line::acc) [] chnl >>= fun l ->
       return (List.rev l))
 
-let view_page page = 
-  return (html 
-     (head (title (pcdata "")) [])
-     ( body [h1 [pcdata "view_page_content"]] )
-  )
-
-let take_while pred lines =
-  let rec loop acc = function
-      (x::xs) as lst ->
-        if pred x then
-          loop (x::acc) xs
-        else
-          (lst, List.rev acc)
-    | [] ->
-        ([], List.rev acc) in
-  loop [] lines
-
 let html_stub body_html = 
   return     
     (html
@@ -142,7 +123,7 @@ let service_save_page_post = Eliom_services.post_service
     ()
 
 {client{
-  (* TODO: understanf Grgoire's letter *)
+  (* TODO: understanf Gregoire's letter *)
   let find_element name = 
     let e1 = Dom_html.document##getElementById (Js.string name) in
     let e2 = Js.Opt.get e1 (fun () -> assert false) in
