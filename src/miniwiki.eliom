@@ -140,7 +140,6 @@ let service_save_page_post = Eliom_services.post_service
 }}
 
 let view_content page () =
-  print_endline "view_content";
   (if wiki_page_exists page then 
       (load_wiki_page page) >>= fun s -> return (String.concat "\n" s)
    else
@@ -176,7 +175,7 @@ let () = My_appl.register wiki_edit_page
     >>= fun wikitext ->
     let frame = iframe ~a:[a_id "main_iframe"] [] in
     Eliom_services.onload {{
-      ignore ((Lwt_js.sleep 0.5) >>= (fun _ -> 
+      ignore ((Lwt_js.sleep 0.1) >>= (fun _ -> 
 	
 	let fr = find_iframe "main_iframe" in
 	fr##src <- Js.string "#";
@@ -190,6 +189,7 @@ let () = My_appl.register wiki_edit_page
 	Js.Opt.case qqq (fun () ->  () )
 	  (fun x -> replace_child x rendered);
 
+	Html2wiki.button_adder fr (find_element "buttons_block");
 	return ()		   
       ) )  
     }};
@@ -202,10 +202,12 @@ let () = My_appl.register wiki_edit_page
 		     let fr = find_iframe "main_iframe" in
 		     let doc = Js.Opt.get (fr##contentDocument) (fun _ -> assert false) in
 		     let ans = Html2wiki.html2wiki (doc##body :> Dom.node Js.t) in
-		     Eliom_client.change_page %service_save_page_post "value" ans 
+		     Eliom_client.change_page %service_save_page_post %page ans 
 		       (* TODO: carring in line above wil not be reported as warning *)		       
 		   }}
-		  ] ~button_type:`Button [i ~a:[] [pcdata "Save"] ]	
+		  ] ~button_type:`Button [i ~a:[] [pcdata "Save"] ];
+	br ();
+	div ~a:[a_id "buttons_block"] []
       ]
     ])
   )

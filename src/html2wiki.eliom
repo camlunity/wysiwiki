@@ -72,4 +72,59 @@ let rec html2wiki ?inH:(inH=false) body =
   done;
   Buffer.contents ans
 
+
+(*888888888888888888888888888888888888888888888888888888888**)                                 
+let button_adder iframe root = 
+  let iWin  = iframe##contentWindow in
+  let iDoc = Js.Opt.get (iframe##contentDocument) (fun () -> assert false) in
+  Dom.appendChild root (Html.createBr Dom_html.document);
+
+    (* see http://www.quirksmode.org/dom/execCommand.html 
+     * http://www.mozilla.org/editor/midas-spec.html
+     *)
+  let createButton ?show:(show=Js._false) ?value:(value=None) title action = 
+    let but = Html.createInput ?_type:(Some (Js.string "submit")) Dom_html.document in
+    but##value <- Js.string title;
+    let wrap s = match s with
+      | None -> Js.null | Some s -> Js.some (Js.string s) in
+    
+    but##onclick <- Html.handler (fun _ -> 
+      iWin##focus ();
+      iDoc##execCommand (Js.string action, show, wrap value); 
+      Js._true);
+    Dom.appendChild root but;
+    but
+    in
+
+    ignore (createButton "hr" "inserthorizontalrule");
+    ignore (createButton "remove format" "removeformat");
+    ignore (createButton "B" "bold");
+    ignore (createButton "I" "italic");
+    Dom.appendChild root (Html.createBr  Dom_html.document);
+    ignore (createButton "p" "formatblock" ~value:(Some "p"));
+    ignore (createButton "h1" "formatblock" ~value:(Some "h1"));
+    ignore (createButton "h2" "formatblock" ~value:(Some "h2"));
+    ignore (createButton "h3" "formatblock" ~value:(Some "h3"));
+
+    (createButton "link" "inserthtml")##onclick <- Html.handler (fun _ ->
+      let link = iWin##prompt (Js.string "Enter a link", Js.string "http://google.ru") 
+                 |>  Js.to_string in
+      let desc = iWin##prompt (Js.string "Enter description", Js.string "desc") 
+                 |>  Js.to_string in
+      let link = String.concat "" ["<a href=\""; link; "\" wysitype=\"global\">"; desc; "</a>"] in
+      iWin##alert (Js.string link); 
+      iDoc##execCommand (Js.string "inserthtml", Js._false, Js.some (Js.string link) );
+      Js._true
+     );
+    (createButton "link2wiki" "inserthtml")##onclick <- Html.handler (fun _ ->
+      let link = iWin##prompt (Js.string "Enter a wikipage", Js.string "lololo") 
+                 |>  Js.to_string in
+      let link = ["<a href=\""; link; "\" wysitype=\"wiki\">"; link; "</a>"] 
+                 |> String.concat "" in
+      iWin##alert (Js.string link); 
+      iDoc##execCommand (Js.string "inserthtml", Js._false, Js.some (Js.string link) );
+      Js._true
+     );
+    Dom.appendChild root (Html.createBr  Dom_html.document);
+
 }}
