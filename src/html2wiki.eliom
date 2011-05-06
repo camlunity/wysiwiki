@@ -32,10 +32,10 @@ let rec html2wiki ?inH:(inH=false) body =
   for i=0 to childNodes##length-1 do
     Js.Optdef.iter (childNodes##item (i)) (fun node ->
       match Js.to_string node##nodeName with
-        | "B" -> let inner = html2wiki node in
-                 add_str inner ~surr:"**"
-        | "I" -> let inner = html2wiki node in
-                 add_str inner ~surr:"//"
+        | "B" | "STRONG" -> let inner = html2wiki node in
+			    add_str inner ~surr:"**"
+        | "I" | "EM" -> let inner = html2wiki node in
+			add_str inner ~surr:"//"
         | "#text" -> (match Js.Opt.to_option  node##nodeValue with
                          | Some x -> Buffer.add_string ans (Js.to_string x)
                          | None -> ())

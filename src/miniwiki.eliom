@@ -173,7 +173,7 @@ let () = My_appl.register wiki_edit_page
      else 
 	return "")
     >>= fun wikitext ->
-    let frame = iframe ~a:[a_id "main_iframe"] [] in
+    let frame = iframe ~a:[a_id "main_iframe" (*; a_seamless `Seamless *)] [] in
     Eliom_services.onload {{
       ignore ((Lwt_js.sleep 0.1) >>= (fun _ -> 
 	
@@ -189,7 +189,28 @@ let () = My_appl.register wiki_edit_page
 	Js.Opt.case qqq (fun () ->  () )
 	  (fun x -> replace_child x rendered);
 
+	let preview: Dom_html.textAreaElement Js.t = find_element "preview_area" in
 	Html2wiki.button_adder fr (find_element "buttons_block");
+
+(*	Dom_html.window##onload <- Dom_html.handler (fun _ ->
+	  let rec dyn_preview old_text n =
+	    let text = Js.to_string doc##body##innerHTML in
+	    let n =
+              if text <> old_text then begin
+		begin try
+			preview##value <- Js.string text;
+		  with _ -> () end;
+		20
+              end else
+		max 0 (n - 1)
+	    in
+	    Lwt_js.sleep (if n = 0 then 0.5 else 0.1) >>= fun () ->
+	    dyn_preview text n
+	  in
+	  ignore (dyn_preview "" 0);
+	  Js._false
+	); *)
+
 	return ()		   
       ) )  
     }};
@@ -208,6 +229,20 @@ let () = My_appl.register wiki_edit_page
 		  ] ~button_type:`Button [i ~a:[] [pcdata "Save"] ];
 	br ();
 	div ~a:[a_id "buttons_block"] []
+(*
+	;
+	br ();
+	label ~a:[] [pcdata "tags below are used for debugging only"];
+	br ();
+	button ~a:[a_id "asdfasdfasdf"; a_onclick {{
+	  let fr:  Dom_html.iFrameElement Js.t = find_element "main_iframe" in
+	  let doc = Js.Opt.get (fr##contentDocument) (fun () -> assert false) in
+	  let area: Dom_html.textAreaElement Js.t = find_element "preview_area" in
+	  area##value <- doc##body##innerHTML
+	}}] ~button_type:`Button [i ~a:[] [pcdata "generate"] ];
+	br ();
+	HTML5.M.textarea ~a:[a_id "preview_area"; a_cols 50; a_rows 20] (pcdata "")
+*)
       ]
     ])
   )
