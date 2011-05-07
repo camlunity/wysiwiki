@@ -49,8 +49,11 @@ let builder =
     W.strong_elem = (fun s -> d##createElement (Js.string "strong") <| s);
     W.em_elem = (fun s -> d##createElement (Js.string "em") <| s);
     W.a_elem =
-      (fun addr s ->
-         let a = Html.createA d in a##href <- Js.string addr; a <| s);
+      (fun addr t s  ->
+         let a = Html.createA d in a##href <- Js.string addr; 
+	 let tt = match t with W.Global -> "global" | W.Wiki -> "wiki" in
+	 a##setAttribute (Js.string "wysitype", Js.string tt);
+	 a <| s);
     W.br_elem = (fun () -> node (d##createElement (Js.string "br")));
     W.img_elem =
       (fun addr alt ->

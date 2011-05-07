@@ -21,6 +21,7 @@
    Parser for Wikicreole
    @author Jérôme Vouillon
 *)
+type link_type = Global | Wiki
 
 type ('flow, 'inline, 'a_content) builder =
   { chars : string -> 'a_content;
@@ -29,7 +30,7 @@ type ('flow, 'inline, 'a_content) builder =
     br_elem : unit -> 'a_content;
     img_elem : string -> string -> 'a_content;
     tt_elem : 'inline list -> 'a_content;
-    a_elem : string -> 'a_content list -> 'inline;
+    a_elem : string -> link_type -> 'a_content list -> 'inline;
     p_elem : 'inline list -> 'flow;
     pre_elem : string list -> 'flow;
     h1_elem : 'inline list -> 'flow;
@@ -50,7 +51,7 @@ type list_kind = Unordered | Ordered
 
 type ('inline, 'flow) stack =
     Style of style * 'inline list * ('inline, 'flow) stack
-  | Link of string * ('inline, 'flow) stack
+  | Link of string * link_type * ('inline, 'flow) stack
       (* Not that we do not save anything in the case of links, as
          links cannot be nested *)
   | Paragraph
@@ -123,10 +124,10 @@ let style_change c style =
     set_style c style true
   end
 
-let pop_link c addr stack =
+let pop_link c addr ltype stack =
   c.stack <- stack;
   c.inline_mix <-
-    c.build.a_elem addr (List.rev c.link_content) :: c.inline_mix;
+    c.build.a_elem addr ltype (List.rev c.link_content) :: c.inline_mix;
   c.link_content <- [];
   c.link <- false
 
@@ -161,8 +162,8 @@ let rec end_paragraph c lev =
     Style (style, inline, stack) ->
       pop_style c style inline stack;
       end_paragraph c lev
-  | Link (addr, stack) ->
-      pop_link c addr stack;
+  | Link (addr, ltype, stack) ->
+      pop_link c addr ltype stack;
       end_paragraph c lev
   | Paragraph ->
       if c.inline_mix <> [] then begin
@@ -358,7 +359,7 @@ and parse_rem c =
         let s = Lexing.lexeme lexbuf in
         let addr = String.sub s 2 (String.length s - 4) in
         c.inline_mix <-
-         c.build.a_elem addr [c.build.chars addr] :: c.inline_mix;
+         c.build.a_elem addr Wiki [c.build.chars addr] :: c.inline_mix;
       parse_rem c lexbuf
   }
   | "[[" (']' ? (not_line_break # [ ']' '|' ])) + "|" {
@@ -367,15 +368,15 @@ and parse_rem c =
       else begin
         let s = Lexing.lexeme lexbuf in
         let addr = String.sub s 2 (String.length s - 3) in
-        c.stack <- Link (addr, c.stack);
+        c.stack <- Link (addr, Global, c.stack);
         c.link <- true
       end;
       parse_rem c lexbuf
   }
   | "]]" {
       begin match c.stack with
-        Link (addr, stack) ->
-          pop_link c addr stack
+        Link (addr, t, stack) ->
+          pop_link c addr t stack
       | _ ->
           push_chars c lexbuf
       end;
@@ -388,7 +389,7 @@ and parse_rem c =
       else
         let addr = Lexing.lexeme lexbuf in
         c.inline_mix <-
-          c.build.a_elem addr [c.build.chars addr] :: c.inline_mix;
+          c.build.a_elem addr Global [c.build.chars addr] :: c.inline_mix;
       parse_rem c lexbuf
   }
   | "\\\\" {

@@ -42,7 +42,7 @@ let rec html2wiki ?inH:(inH=false) body =
         | "P" -> let inner = html2wiki node in
                  add_str (inner ^ "\n\n")
         | "BR"  -> Buffer.add_string ans "\\\\"
-        | "HR"  -> Buffer.add_string ans "----"
+        | "HR"  -> Buffer.add_string ans "----\n"
         | "DIV" -> let inner = html2wiki node in
                    Buffer.add_string ans inner               
         | "A"   ->
@@ -61,8 +61,8 @@ let rec html2wiki ?inH:(inH=false) body =
               | "wiki"   -> String.concat "" ["[[";url;"]]"] |> Buffer.add_string ans 
               | _        -> Buffer.add_string ans "^error2_in_anchor^"
             )
-        | ("H1" | "H2" | "H3") as hh ->
-          let n = int_of_char hh.[1] - (int_of_char '0') + 1 in
+        | ("H1" | "H2" | "H3" | "H4" | "H5" | "H6") as hh ->
+          let n = int_of_char hh.[1] - (int_of_char '0') in
           let prefix = String.make n '=' in
           let inner = html2wiki node in
           Buffer.add_string ans (prefix^inner^"\n\n")
