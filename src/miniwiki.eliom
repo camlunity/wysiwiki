@@ -1,3 +1,9 @@
+(*
+  WYSIWYG wiki. 
+  Based om Eliom's miniwiki example.
+
+  Dmitry Kosarev
+*)
 {shared{
 open Lwt
 let ( >> ) x f = f x
@@ -183,7 +189,7 @@ let () = My_appl.register wiki_edit_page
 	fr##src <- Js.string "#";
 	let doc = Js.Opt.get (fr##contentDocument) (fun _ -> assert false) in
 	doc##open_ ();
-	doc##write (Js.string "<html><body><div id=\"qqq\"/></body></html>");
+	doc##write (Js.string "<html><head><link rel=\"stylesheet\" href=\"style.css\"></head><body><div id=\"qqq\"/></body></html>");
 	doc##close ();
 	doc##designMode <- Js.string "On";
 	let rendered = Wiki_syntax.xml_of_wiki %wikitext doc in
@@ -196,11 +202,10 @@ let () = My_appl.register wiki_edit_page
 	return ()		   
       ) )  
     }};
-	
     Lwt.return (menu_html ~edit:page [
       div ~a:[] [
 	frame; br ();
-	button ~a:[a_id "submit_button";
+	button ~a:[a_id "submit_button"; a_onload "";
 		   a_onclick {{
 		     let fr = find_iframe "main_iframe" in
 		     let doc = Js.Opt.get (fr##contentDocument) (fun _ -> assert false) in

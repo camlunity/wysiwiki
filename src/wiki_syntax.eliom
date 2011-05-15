@@ -19,6 +19,9 @@
 (**
    Pretty print wiki to DOM elements
    @author Vincent Balat
+
+   Updated for using in WYSIWIKI
+   Dmitry Kosarev
 *)
 {client{
 module Html = Dom_html
