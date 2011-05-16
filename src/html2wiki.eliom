@@ -1,3 +1,7 @@
+(*
+ * HTML to wiki-syntax translator
+ * Dmitry Kosarev 2011
+ *)
 {client{
 
 module Html = Dom_html
