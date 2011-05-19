@@ -42,19 +42,6 @@ let wiki_start =
 
 let wiki_edit_page = Eliom_services.service ["edit"] (Eliom_parameters.string "p") ()
 
-let menu_html ~edit:page content = 
-  [div ~a:[a_id "navbar"] [
-    div ~a:[a_id "akmenu"] [p [
-      span ~a:[a_class ["nwikilogo"]] [pcdata "MiniWiki"];	    
-      Eliom_output.Html5.a ~a:[a_accesskey 'h'; a_class ["ak"]] ~absolute:true
-	[pcdata "Home"]  ~service:wiki_view_page "WikiStart"; 
-      Eliom_output.Html5.a ~a:[a_accesskey 'e'; a_class ["ak"]] ~absolute:true 
-	[pcdata "Edit page"]  ~service:wiki_edit_page page; 
-      br ()]]];
-  div ~a:[a_id "content"] content]
-
-let wiki_page_menu_html page  = menu_html
-  
 let finally_ handler f x =
   catch
     (fun () -> f x)
@@ -103,6 +90,37 @@ let wiki_page_filename page =
 let wiki_page_exists page =
   Sys.file_exists (wiki_page_filename page)
 
+let ends_with s ~patt:patt = (* TODO: open Core *)
+  let plen = String.length patt in
+  if String.length s < plen then false
+  else (Str.last_chars s plen = patt)
+
+let menu_html ~edit:page content = 
+  let (|>) x f  = f x in
+  let wikis = FileUtil.ls wiki_file_dir 
+    |> List.filter (ends_with ~patt:".wiki") 
+    |> List.map (fun name -> Filename.basename (Filename.chop_extension name))
+    |> List.map (fun name -> Html5.a ~a:[a_class ["ak"]] ~absolute:true
+      [pcdata name] ~service:wiki_view_page name)
+  in
+  let menu_items = 
+      span ~a:[a_class ["nwikilogo"]] [pcdata "MiniWiki"] 
+    :: Html5.a ~a:[a_accesskey 'h'; a_class ["ak"]] ~absolute:true
+	[pcdata "Home"]  ~service:wiki_view_page "WikiStart"
+    :: Html5.a ~a:[a_accesskey 'e'; a_class ["ak"]] ~absolute:true 
+	[pcdata "Edit page"]  ~service:wiki_edit_page page
+    :: br ()
+    :: wikis @ [br ()]
+  in
+
+  [div ~a:[a_id "navbar"] [
+    div ~a:[a_id "akmenu"] [p 
+      menu_items 
+      ]];
+  div ~a:[a_id "content"] content]
+
+let wiki_page_menu_html page  = menu_html
+  
 let save_wiki_page page text =
   with_open_out
     (wiki_page_filename page)
@@ -220,7 +238,7 @@ let () = My_appl.register wiki_edit_page
 	;
 	br ()
 (*	;
-	label ~a:[] [pcdata "tags below are used for debugging only"];
+	label ~a:[] [pcdata "tags below are used for debugging only"]; 
 	br ()
 	;
 	button ~a:[a_id "asdfasdfasdf"; a_onclick {{
@@ -228,11 +246,11 @@ let () = My_appl.register wiki_edit_page
 	  let doc = Js.Opt.get (fr##contentDocument) (fun () -> assert false) in
 	  let area: Dom_html.textAreaElement Js.t = find_element "preview_area" in
 	  area##value <- doc##body##innerHTML
-	}}] ~button_type:`Button [i ~a:[] [pcdata "generate"] ] *)
-(*	;
+	}}] ~button_type:`Button [i ~a:[] [pcdata "generate"] ] 
+	;
 	br ();
 	HTML5.M.textarea ~a:[a_id "preview_area"; a_cols 50; a_rows 20] (pcdata "")
-*)	
+	*)	
       ]
     ])
   )

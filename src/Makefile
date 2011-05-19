@@ -13,7 +13,7 @@ all: byte opt
 
 #### Main site : eliom_testsuite ####
 
-SERVER_PACKAGE :=
+SERVER_PACKAGE := fileutils 
 CLIENT_PACKAGE :=
 
 SERVER_FILES := miniwiki.eliom

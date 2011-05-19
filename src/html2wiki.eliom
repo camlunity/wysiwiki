@@ -104,7 +104,7 @@ let button_adder iframe root =
     ignore (createButton "remove format" "removeformat");
     ignore (createButton "B" "bold");
     ignore (createButton "I" "italic");
-    Dom.appendChild root (Html.createBr  Dom_html.document);
+(*    Dom.appendChild root (Html.createBr  Dom_html.document); *)
     ignore (createButton "p" "formatblock" ~value:(Some "p"));
     ignore (createButton "h1" "formatblock" ~value:(Some "h1"));
     ignore (createButton "h2" "formatblock" ~value:(Some "h2"));
